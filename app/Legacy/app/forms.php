@@ -13,6 +13,7 @@ function alert_blank(): array
         'type'          => ALERT_TYPES[0],
         'severity'      => 'media',
         'status'        => 'activa',
+        'zone'          => ALERT_ZONES[0],
         'location'      => '',
         'meeting_point' => '',
         'description'   => '',
@@ -63,10 +64,21 @@ function render_alert_form(array $alert, string $action, string $cancelUrl, stri
 			</div>
 		</div>
 
-		<div class="field">
-			<label for="location">Ubicacion</label>
-			<input id="location" name="location" type="text" maxlength="160" required
-			       value="<?= e($alert['location']) ?>" placeholder="Calle, edificio, piso o sector">
+		<div class="field-row">
+			<div class="field">
+				<label for="zone">Zona</label>
+				<select id="zone" name="zone" required>
+					<?php foreach (ALERT_ZONES as $zone): ?>
+						<option value="<?= e($zone) ?>" <?= ($alert['zone'] ?? '') === $zone ? 'selected' : '' ?>><?= e($zone) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<span class="hint">Se usa para filtrar el portal publico y para las notificaciones push por zona.</span>
+			</div>
+			<div class="field">
+				<label for="location">Ubicacion</label>
+				<input id="location" name="location" type="text" maxlength="160" required
+				       value="<?= e($alert['location']) ?>" placeholder="Calle, edificio, piso o sector">
+			</div>
 		</div>
 
 		<div class="field">
