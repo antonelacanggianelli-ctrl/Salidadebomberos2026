@@ -96,6 +96,18 @@ function get_str(string $key, int $maxLength = 255): string
     return mb_substr($value, 0, $maxLength);
 }
 
+/**
+ * Fragmento de ORDER BY para ordenar texto sin distinguir mayusculas de
+ * minusculas, portable entre motores: en SQLite las columnas TEXT son
+ * sensibles a mayusculas salvo que se pida COLLATE NOCASE; en MySQL/MariaDB
+ * las columnas ya usan una collation *_ci (case-insensitive) por defecto,
+ * y COLLATE NOCASE ahi directamente no existe y rompe la consulta.
+ */
+function order_by_ci(string $column): string
+{
+    return DB_DRIVER === 'mysql' ? $column : $column . ' COLLATE NOCASE';
+}
+
 /** Lee un valor primero de GET, y si no vino, de POST (util para filtros que
  *  tambien pueden enviarse por formulario). */
 function post_or_get_str(string $key, int $maxLength = 255): string
