@@ -215,13 +215,13 @@ function alerts_summary(?array $alerts = null): array
 function users_list(?string $role = null): array
 {
     if ($role !== null) {
-        $stmt = db()->prepare('SELECT * FROM users WHERE role = ? ORDER BY active DESC, full_name COLLATE NOCASE');
+        $stmt = db()->prepare('SELECT * FROM users WHERE role = ? ORDER BY active DESC, ' . order_by_ci('full_name'));
         $stmt->execute([$role]);
 
         return $stmt->fetchAll();
     }
 
-    return db()->query('SELECT * FROM users ORDER BY role, active DESC, full_name COLLATE NOCASE')->fetchAll();
+    return db()->query('SELECT * FROM users ORDER BY role, active DESC, ' . order_by_ci('full_name'))->fetchAll();
 }
 
 function user_find(int $id): ?array
