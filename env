@@ -38,6 +38,26 @@
 # database.default.DBPrefix =
 # database.default.port = 3306
 
+#--------------------------------------------------------------------
+# BASE DE DATOS DE SALIDADEBOMBEROS (Semana 2 del plan de trabajo)
+#--------------------------------------------------------------------
+# Estas variables son propias de este proyecto (no del framework) y las
+# usan tanto app/Legacy/app/db.php como app/Config/Database.php, para que
+# el codigo Legacy y los Models de CI4 (como AlertModel) usen siempre el
+# mismo motor y la misma base.
+#
+# Por defecto (sin configurar nada) la app usa SQLite: no hace falta
+# instalar ningun servidor, ideal para desarrollo y para la demo.
+#
+# Para usar MySQL/MariaDB, descomentar y completar estas 6 variables:
+
+# DB_DRIVER = mysql
+# DB_HOST   = 127.0.0.1
+# DB_PORT   = 3306
+# DB_NAME   = salidadebomberos
+# DB_USER   = salidadebomberos
+# DB_PASS   = cambiar-esta-clave
+
 # If you use MySQLi as tests, first update the values of Config\Database::$tests.
 # database.tests.hostname = localhost
 # database.tests.database = ci4_test

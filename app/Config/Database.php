@@ -24,32 +24,72 @@ class Database extends Config
      *
      * @var array<string, mixed>
      */
-    public array $default = [
-        'DSN'          => '',
-        'hostname'     => 'localhost',
-        'username'     => '',
-        'password'     => '',
-        'database'     => '',
-        'DBDriver'     => 'MySQLi',
-        'DBPrefix'     => '',
-        'pConnect'     => false,
-        'DBDebug'      => true,
-        'charset'      => 'utf8mb4',
-        'DBCollat'     => 'utf8mb4_general_ci',
-        'swapPre'      => '',
-        'encrypt'      => false,
-        'compress'     => false,
-        'strictOn'     => false,
-        'failover'     => [],
-        'port'         => 3306,
-        'numberNative' => false,
-        'foundRows'    => false,
-        'dateFormat'   => [
-            'date'     => 'Y-m-d',
-            'datetime' => 'Y-m-d H:i:s',
-            'time'     => 'H:i:s',
-        ],
-    ];
+    /*
+     * Migracion gradual (ver README): la aplicacion original guarda sus datos
+     * mediante PDO directo en app/Legacy/app/db.php, que soporta dos motores
+     * segun la variable de entorno DB_DRIVER (sqlite por defecto, mysql si
+     * se configura - ver Semana 2 del plan de trabajo). Para que los Models
+     * de CI4 (como AlertModel) lean siempre la misma base que el resto de
+     * la aplicacion, este grupo por defecto sigue exactamente la misma
+     * variable de entorno, en vez de tener su propia configuracion aparte.
+     */
+    public array $default = [];
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $driver = 'mysql' === (getenv('DB_DRIVER') ?: 'sqlite') ? 'mysql' : 'sqlite';
+
+        $this->default = $driver === 'mysql' ? [
+            'DSN'          => '',
+            'hostname'     => getenv('DB_HOST') ?: '127.0.0.1',
+            'username'     => getenv('DB_USER') ?: 'salidadebomberos',
+            'password'     => getenv('DB_PASS') ?: '',
+            'database'     => getenv('DB_NAME') ?: 'salidadebomberos',
+            'DBDriver'     => 'MySQLi',
+            'DBPrefix'     => '',
+            'pConnect'     => false,
+            'DBDebug'      => true,
+            'charset'      => 'utf8mb4',
+            'DBCollat'     => 'utf8mb4_unicode_ci',
+            'swapPre'      => '',
+            'encrypt'      => false,
+            'compress'     => false,
+            'strictOn'     => false,
+            'failover'     => [],
+            'port'         => (int) (getenv('DB_PORT') ?: 3306),
+            'numberNative' => false,
+            'foundRows'    => false,
+        ] : [
+            'DSN'          => '',
+            'hostname'     => 'localhost',
+            'username'     => '',
+            'password'     => '',
+            'database'     => APPPATH . 'Legacy' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'salidadebomberos.sqlite',
+            'DBDriver'     => 'SQLite3',
+            'DBPrefix'     => '',
+            'pConnect'     => false,
+            'DBDebug'      => true,
+            'charset'      => 'utf8mb4',
+            'DBCollat'     => 'utf8mb4_general_ci',
+            'swapPre'      => '',
+            'encrypt'      => false,
+            'compress'     => false,
+            'strictOn'     => false,
+            'failover'     => [],
+            'port'         => 3306,
+            'numberNative' => false,
+            'foundRows'    => false,
+        ];
+
+        // Ensure that we always set the database group to 'tests' if
+        // we are currently running an automated test suite, so that
+        // we don't overwrite live data on accident.
+        if (ENVIRONMENT === 'testing') {
+            $this->defaultGroup = 'tests';
+        }
+    }
 
     //    /**
     //     * Sample database connection for SQLite3.
@@ -189,16 +229,4 @@ class Database extends Config
             'time'     => 'H:i:s',
         ],
     ];
-
-    public function __construct()
-    {
-        parent::__construct();
-
-        // Ensure that we always set the database group to 'tests' if
-        // we are currently running an automated test suite, so that
-        // we don't overwrite live data on accident.
-        if (ENVIRONMENT === 'testing') {
-            $this->defaultGroup = 'tests';
-        }
-    }
 }

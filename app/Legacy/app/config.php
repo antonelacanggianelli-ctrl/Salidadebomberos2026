@@ -17,6 +17,26 @@ const APP_TIMEZONE = 'America/Argentina/Buenos_Aires';
 const DATA_DIR = __DIR__ . '/../data';
 const DB_FILE  = DATA_DIR . '/salidadebomberos.sqlite';
 
+/**
+ * Motor de base de datos (Semana 2 del plan de trabajo).
+ *
+ * Por defecto la app sigue usando SQLite (DB_DRIVER=sqlite): no requiere
+ * un servidor aparte, así cualquiera del equipo la clona y la corre sin
+ * instalar nada mas, ideal para desarrollo y para la demo de defensa.
+ *
+ * Para usar MySQL/MariaDB (como pedia originalmente el plan de trabajo),
+ * definir la variable de entorno DB_DRIVER=mysql y completar el resto de
+ * las variables DB_* antes de levantar el servidor. Ambos motores usan
+ * exactamente el mismo esquema (ver db_install_sqlite/db_install_mysql
+ * en db.php) y el resto de la aplicacion no cambia una linea.
+ */
+define('DB_DRIVER', 'mysql' === (getenv('DB_DRIVER') ?: 'sqlite') ? 'mysql' : 'sqlite');
+define('DB_MYSQL_HOST', false !== getenv('DB_HOST') ? getenv('DB_HOST') : '127.0.0.1');
+define('DB_MYSQL_PORT', false !== getenv('DB_PORT') ? getenv('DB_PORT') : '3306');
+define('DB_MYSQL_NAME', false !== getenv('DB_NAME') ? getenv('DB_NAME') : 'salidadebomberos');
+define('DB_MYSQL_USER', false !== getenv('DB_USER') ? getenv('DB_USER') : 'salidadebomberos');
+define('DB_MYSQL_PASS', false !== getenv('DB_PASS') ? getenv('DB_PASS') : '');
+
 // Sesiones y seguridad.
 const SESSION_NAME         = 'sdb_session';
 const SESSION_IDLE_TIMEOUT = 1800;  // 30 minutos de inactividad
@@ -47,5 +67,29 @@ const ALERT_TYPES = [
 
 const ALERT_SEVERITIES = ['baja', 'media', 'alta', 'critica'];
 const ALERT_STATUSES   = ['activa', 'controlada', 'cerrada'];
+
+/**
+ * Zonas del partido para poder filtrar alertas por area geografica.
+ * Ajustar esta lista con las zonas reales que use el cuartel.
+ */
+const ALERT_ZONES = [
+    'Centro',
+    'Zona Norte',
+    'Zona Sur',
+    'Zona Este / Laguna',
+    'Zona Oeste',
+    'Zona Rural',
+];
+
+// Configuracion de Firebase Cloud Messaging (notificaciones push del portal).
+// Completar con las credenciales reales del proyecto de Firebase antes de
+// habilitar el envio en produccion. Mientras esten vacias, el sistema sigue
+// funcionando con normalidad: solo no se dispara la notificacion push.
+const FCM_PROJECT_ID          = '';
+const FCM_SERVICE_ACCOUNT_KEY = DATA_DIR . '/firebase-service-account.json';
+const FCM_VAPID_PUBLIC_KEY    = '';
+const FCM_WEB_API_KEY         = '';
+const FCM_APP_ID              = '';
+const FCM_MESSAGING_SENDER_ID = '';
 
 date_default_timezone_set('UTC');

@@ -13,7 +13,7 @@ class LegacyApp extends BaseController
     {
         $allowed = [
             'index.php', 'login.php', 'logout.php', 'admin.php',
-            'bomberos.php', 'perfil.php', 'api.php',
+            'bomberos.php', 'perfil.php', 'api.php', 'alerta.php',
         ];
         if (!in_array($page, $allowed, true)) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException($page);
@@ -37,8 +37,13 @@ class LegacyApp extends BaseController
         $page = basename($path);
         $this->run(in_array($page, [
             'login.php', 'logout.php', 'admin.php', 'bomberos.php',
-            'perfil.php', 'api.php',
+            'perfil.php', 'api.php', 'alerta.php',
         ], true) ? $page : 'index.php');
+    }
+
+    public function alerta(): void
+    {
+        $this->run('alerta.php');
     }
 
     public function login(): void

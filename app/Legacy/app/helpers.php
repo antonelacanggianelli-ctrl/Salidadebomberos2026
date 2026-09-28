@@ -84,6 +84,27 @@ function post_str(string $key, int $maxLength = 255): string
     return mb_substr($value, 0, $maxLength);
 }
 
+/** Igual que post_str() pero para parametros de querystring (filtros GET). */
+function get_str(string $key, int $maxLength = 255): string
+{
+    $value = $_GET[$key] ?? '';
+    if (!is_string($value)) {
+        return '';
+    }
+    $value = trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $value) ?? '');
+
+    return mb_substr($value, 0, $maxLength);
+}
+
+/** Lee un valor primero de GET, y si no vino, de POST (util para filtros que
+ *  tambien pueden enviarse por formulario). */
+function post_or_get_str(string $key, int $maxLength = 255): string
+{
+    $value = get_str($key, $maxLength);
+
+    return $value !== '' ? $value : post_str($key, $maxLength);
+}
+
 /** Cabeceras de seguridad basicas para todas las paginas. */
 function send_security_headers(): void
 {

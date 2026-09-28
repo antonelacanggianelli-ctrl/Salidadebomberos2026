@@ -3,96 +3,57 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/push.php';
 
 /* --------------------------------------------------------------- Alertas -- */
 
-/** Orden por criticidad para paneles y portada. */
+/**
+ * Acceso al Model CI4 de alertas (app/Models/AlertModel.php).
+ * Las funciones de este archivo delegan aqui: es el paso de migracion que
+ * separa el acceso a datos de alertas hacia un Model real de CodeIgniter,
+ * conservando las mismas firmas de funcion que usan bomberos.php, admin.php,
+ * index.php y api.php.
+ */
+function alert_model(): \App\Models\AlertModel
+{
+    static $model = null;
+    if ($model === null) {
+        db(); // fuerza la creacion del esquema (db_install_*) antes de usar el Model de CI4
+        $model = new \App\Models\AlertModel();
+    }
+
+    return $model;
+}
+
+/** Orden por criticidad para paneles y portada (se mantiene por compatibilidad). */
 const SEVERITY_ORDER_SQL = "CASE severity WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END";
 
 /** Alertas visibles al publico (publicadas y no cerradas). */
 function alerts_public(int $limit = 20): array
 {
-    $sql = 'SELECT a.*, u.full_name AS author_name, u.rank AS author_rank
-            FROM alerts a JOIN users u ON u.id = a.created_by
-            WHERE a.published = 1 AND a.status <> \'cerrada\'
-            ORDER BY ' . SEVERITY_ORDER_SQL . ', a.created_at DESC
-            LIMIT ?';
-    $stmt = db()->prepare($sql);
-    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchAll();
+    return alert_model()->publicAlerts($limit);
 }
 
 /** Ultimas alertas cerradas, para el historial publico. */
 function alerts_recently_closed(int $limit = 5): array
 {
-    $stmt = db()->prepare(
-        'SELECT a.*, u.full_name AS author_name
-         FROM alerts a JOIN users u ON u.id = a.created_by
-         WHERE a.published = 1 AND a.status = \'cerrada\'
-         ORDER BY COALESCE(a.closed_at, a.updated_at) DESC
-         LIMIT ?'
-    );
-    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchAll();
+    return alert_model()->recentlyClosed($limit);
 }
 
 /**
- * Listado para paneles.
+ * Listado para paneles y portal, con filtros opcionales.
  *
- * @param array{author?:int, status?:string, severity?:string, search?:string} $filters
+ * @param array{author?:int, status?:string, severity?:string, type?:string,
+ *              zone?:string, search?:string, published_only?:bool} $filters
  */
 function alerts_list(array $filters = [], int $limit = 200): array
 {
-    $where  = [];
-    $params = [];
-
-    if (!empty($filters['author'])) {
-        $where[]  = 'a.created_by = ?';
-        $params[] = (int) $filters['author'];
-    }
-    if (!empty($filters['status']) && in_array($filters['status'], ALERT_STATUSES, true)) {
-        $where[]  = 'a.status = ?';
-        $params[] = $filters['status'];
-    }
-    if (!empty($filters['severity']) && in_array($filters['severity'], ALERT_SEVERITIES, true)) {
-        $where[]  = 'a.severity = ?';
-        $params[] = $filters['severity'];
-    }
-    if (!empty($filters['search'])) {
-        $where[]  = '(a.title LIKE ? OR a.location LIKE ? OR a.description LIKE ?)';
-        $needle   = '%' . $filters['search'] . '%';
-        $params[] = $needle;
-        $params[] = $needle;
-        $params[] = $needle;
-    }
-
-    $sql = 'SELECT a.*, u.full_name AS author_name, u.username AS author_user
-            FROM alerts a JOIN users u ON u.id = a.created_by';
-    if ($where !== []) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
-    $sql .= ' ORDER BY (a.status = \'cerrada\'), ' . SEVERITY_ORDER_SQL . ', a.created_at DESC LIMIT ' . $limit;
-
-    $stmt = db()->prepare($sql);
-    $stmt->execute($params);
-
-    return $stmt->fetchAll();
+    return alert_model()->listWithFilters($filters, $limit);
 }
 
 function alert_find(int $id): ?array
 {
-    $stmt = db()->prepare(
-        'SELECT a.*, u.full_name AS author_name, u.username AS author_user
-         FROM alerts a JOIN users u ON u.id = a.created_by WHERE a.id = ?'
-    );
-    $stmt->execute([$id]);
-    $row = $stmt->fetch();
-
-    return $row === false ? null : $row;
+    return alert_model()->findWithAuthor($id);
 }
 
 /**
@@ -109,6 +70,7 @@ function alert_validate(): array
         'type'          => post_str('type', 60),
         'severity'      => post_str('severity', 20),
         'status'        => post_str('status', 20),
+        'zone'          => post_str('zone', 60),
         'location'      => post_str('location', 160),
         'meeting_point' => post_str('meeting_point', 120),
         'description'   => post_str('description', 2000),
@@ -128,6 +90,9 @@ function alert_validate(): array
     if (!in_array($data['status'], ALERT_STATUSES, true)) {
         $errors[] = 'Selecciona un estado valido.';
     }
+    if (!in_array($data['zone'], ALERT_ZONES, true)) {
+        $errors[] = 'Selecciona una zona valida.';
+    }
     if (mb_strlen($data['location']) < 3) {
         $errors[] = 'Indica la ubicacion del incidente.';
     }
@@ -142,17 +107,20 @@ function alert_create(array $data, int $authorId): int
 {
     $now  = now_utc();
     $stmt = db()->prepare(
-        'INSERT INTO alerts (title, type, severity, status, location, meeting_point, description,
+        'INSERT INTO alerts (title, type, severity, status, location, zone, meeting_point, description,
                              instructions, published, created_by, created_at, updated_at, closed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
-        $data['title'], $data['type'], $data['severity'], $data['status'], $data['location'],
+        $data['title'], $data['type'], $data['severity'], $data['status'], $data['location'], $data['zone'],
         $data['meeting_point'], $data['description'], $data['instructions'], $data['published'],
         $authorId, $now, $now, $data['status'] === 'cerrada' ? $now : null,
     ]);
 
-    return (int) db()->lastInsertId();
+    $id = (int) db()->lastInsertId();
+    fcm_notify_new_alert($id);
+
+    return $id;
 }
 
 function alert_update(int $id, array $data): void
@@ -166,15 +134,19 @@ function alert_update(int $id, array $data): void
     }
 
     $stmt = db()->prepare(
-        'UPDATE alerts SET title = ?, type = ?, severity = ?, status = ?, location = ?, meeting_point = ?,
+        'UPDATE alerts SET title = ?, type = ?, severity = ?, status = ?, location = ?, zone = ?, meeting_point = ?,
                            description = ?, instructions = ?, published = ?, updated_at = ?, closed_at = ?
          WHERE id = ?'
     );
     $stmt->execute([
-        $data['title'], $data['type'], $data['severity'], $data['status'], $data['location'],
+        $data['title'], $data['type'], $data['severity'], $data['status'], $data['location'], $data['zone'],
         $data['meeting_point'], $data['description'], $data['instructions'], $data['published'],
         now_utc(), $closedAt, $id,
     ]);
+
+    if ($data['status'] === 'cerrada' && ($current['status'] ?? null) !== 'cerrada') {
+        fcm_notify_alert_closed($id);
+    }
 }
 
 function alert_set_status(int $id, string $status): void
@@ -182,8 +154,13 @@ function alert_set_status(int $id, string $status): void
     if (!in_array($status, ALERT_STATUSES, true)) {
         return;
     }
+    $previous = alert_find($id);
     $stmt = db()->prepare('UPDATE alerts SET status = ?, updated_at = ?, closed_at = ? WHERE id = ?');
     $stmt->execute([$status, now_utc(), $status === 'cerrada' ? now_utc() : null, $id]);
+
+    if ($status === 'cerrada' && ($previous['status'] ?? null) !== 'cerrada') {
+        fcm_notify_alert_closed($id);
+    }
 }
 
 function alert_delete(int $id): void
@@ -194,25 +171,13 @@ function alert_delete(int $id): void
 /** Resumen para tarjetas de estado. */
 function alerts_stats(): array
 {
-    $row = db()->query(
-        "SELECT
-            COUNT(*) AS total,
-            SUM(CASE WHEN status = 'activa' THEN 1 ELSE 0 END) AS activas,
-            SUM(CASE WHEN status = 'controlada' THEN 1 ELSE 0 END) AS controladas,
-            SUM(CASE WHEN status = 'cerrada' THEN 1 ELSE 0 END) AS cerradas,
-            SUM(CASE WHEN severity = 'critica' AND status <> 'cerrada' THEN 1 ELSE 0 END) AS criticas
-         FROM alerts"
-    )->fetch();
-
-    return array_map(static fn ($v) => (int) $v, $row ?: []);
+    return alert_model()->stats();
 }
 
 /** Fecha de la ultima actualizacion registrada en el sistema. */
 function alerts_last_update(): ?string
 {
-    $value = db()->query('SELECT MAX(updated_at) FROM alerts')->fetchColumn();
-
-    return is_string($value) && $value !== '' ? $value : null;
+    return alert_model()->lastUpdate();
 }
 
 /**

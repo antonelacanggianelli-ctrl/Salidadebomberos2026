@@ -32,11 +32,50 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && post_str('accion', 20) === 
 
 $subscribeFlash = flash_pull();
 $user       = current_user();
-$alerts     = alerts_public();
+
+// Filtros del portal publico (semana 5 del plan: listado, detalle y filtros).
+// Se leen por GET para que la URL sea compartible/bookmarkeable.
+$filterType   = post_or_get_str('tipo', 60);
+$filterZone   = post_or_get_str('zona', 60);
+$filterStatus = post_or_get_str('estado', 20);
+if (!in_array($filterType, ALERT_TYPES, true)) {
+    $filterType = '';
+}
+if (!in_array($filterZone, ALERT_ZONES, true)) {
+    $filterZone = '';
+}
+if (!in_array($filterStatus, ALERT_STATUSES, true)) {
+    $filterStatus = '';
+}
+$hasFilters = $filterType !== '' || $filterZone !== '' || $filterStatus !== '';
+
+if ($hasFilters) {
+    $filters = ['published_only' => true];
+    if ($filterType !== '') {
+        $filters['type'] = $filterType;
+    }
+    if ($filterZone !== '') {
+        $filters['zone'] = $filterZone;
+    }
+    if ($filterStatus !== '') {
+        $filters['status'] = $filterStatus;
+    }
+    $alerts = alerts_list($filters, 100);
+    if ($filterStatus === '') {
+        // Sin filtro de estado explicito, el listado sigue mostrando por
+        // defecto solo lo vigente (igual que el feed sin filtrar).
+        $alerts = array_values(array_filter($alerts, static fn (array $a) => $a['status'] !== 'cerrada'));
+    }
+} else {
+    $alerts = alerts_public();
+}
+
+// El resumen del estado general del edificio SIEMPRE refleja todas las
+// alertas vigentes, sin importar los filtros que este mirando la persona.
+$summary    = alerts_summary(alerts_public());
 $closed     = alerts_recently_closed(4);
 $contacts   = contacts_all();
 
-$summary    = alerts_summary($alerts);
 $activas    = array_values(array_filter($alerts, static fn (array $a) => $a['status'] === 'activa'));
 $enAlarma   = $summary['en_alarma'];
 
@@ -150,6 +189,22 @@ $mainExit    = $enAlarma ? 'Sigue la ruta indicada' : 'Despejada';
 						<button class="btn btn-primary" type="submit">Anotarme para recibir alertas</button>
 					</div>
 				</form>
+
+				<div id="pushBox" style="margin-top:28px;padding-top:22px;border-top:1px solid rgba(255,255,255,.15);" data-fcm-configured="<?= fcm_client_ready() ? '1' : '0' ?>" data-zone-select-name="zona">
+					<p class="section-kicker" style="color:var(--amber);">Notificaciones push</p>
+					<p style="color:#cad1d0;max-width:520px;margin:6px 0 14px;">Recibi el aviso al instante en este navegador, ademas o en vez del SMS.</p>
+					<div class="field" style="max-width:280px;">
+						<label for="push_zone" style="color:#cad1d0;">Avisarme de esta zona</label>
+						<select id="push_zone">
+							<option value="">Todas las zonas</option>
+							<?php foreach (ALERT_ZONES as $zone): ?>
+								<option value="<?= e($zone) ?>"><?= e($zone) ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<button id="pushEnableBtn" class="btn btn-quiet" type="button">Activar notificaciones en este dispositivo</button>
+					<p id="pushStatus" class="hint" style="color:#cad1d0;margin-top:10px;"></p>
+				</div>
 			</div>
 		</section>
 
@@ -162,6 +217,40 @@ $mainExit    = $enAlarma ? 'Sigue la ruta indicada' : 'Despejada';
 					</div>
 					<p class="section-intro">Publicadas y actualizadas por el personal autorizado del cuartel. La pagina se refresca sola cada 60 segundos.</p>
 				</div>
+
+				<form class="alert-filters" method="get" action="index.php#alertas" aria-label="Filtrar alertas">
+					<div class="field">
+						<label for="f-tipo">Tipo</label>
+						<select id="f-tipo" name="tipo" onchange="this.form.submit()">
+							<option value="">Todos</option>
+							<?php foreach (ALERT_TYPES as $type): ?>
+								<option value="<?= e($type) ?>" <?= $filterType === $type ? 'selected' : '' ?>><?= e($type) ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="field">
+						<label for="f-zona">Zona</label>
+						<select id="f-zona" name="zona" onchange="this.form.submit()">
+							<option value="">Todas</option>
+							<?php foreach (ALERT_ZONES as $zone): ?>
+								<option value="<?= e($zone) ?>" <?= $filterZone === $zone ? 'selected' : '' ?>><?= e($zone) ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="field">
+						<label for="f-estado">Estado</label>
+						<select id="f-estado" name="estado" onchange="this.form.submit()">
+							<option value="">Vigentes</option>
+							<?php foreach (ALERT_STATUSES as $st): ?>
+								<option value="<?= e($st) ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= e(ucfirst($st)) ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<noscript><button class="btn btn-sm btn-line" type="submit">Filtrar</button></noscript>
+					<?php if ($hasFilters): ?>
+						<a class="btn btn-sm btn-quiet" href="index.php#alertas">Quitar filtros</a>
+					<?php endif; ?>
+				</form>
 
 				<div class="alert-feed" id="alertFeed">
 					<?php if ($alerts === []): ?>
@@ -185,6 +274,7 @@ $mainExit    = $enAlarma ? 'Sigue la ruta indicada' : 'Despejada';
 										<p class="alert-instructions"><b>Indicaciones:</b> <?= nl2br(e($alert['instructions'])) ?></p>
 									<?php endif; ?>
 									<div class="alert-meta">
+										<span>Zona: <b><?= e($alert['zone'] !== '' ? $alert['zone'] : 'Sin especificar') ?></b></span>
 										<span>Ubicacion: <b><?= e($alert['location']) ?></b></span>
 										<?php if ($alert['meeting_point'] !== ''): ?>
 											<span>Punto de reunion: <b><?= e($alert['meeting_point']) ?></b></span>
@@ -194,6 +284,9 @@ $mainExit    = $enAlarma ? 'Sigue la ruta indicada' : 'Despejada';
 										<?php if ($alert['updated_at'] !== $alert['created_at']): ?>
 											<span>Actualizada <b><?= e(fmt_ago($alert['updated_at'])) ?></b></span>
 										<?php endif; ?>
+									</div>
+									<div class="alert-actions">
+										<a class="btn btn-sm btn-line" href="alerta.php?id=<?= (int) $alert['id'] ?>">Ver detalle &rarr;</a>
 									</div>
 								</div>
 							</article>
