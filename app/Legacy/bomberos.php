@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 /**
+ * SUPERADO (Semana 3): este archivo ya no se usa. La ruta bomberos.php ahora
+ * apunta a app/Controllers/Bomberos.php + app/Views/bomberos/*.php, un
+ * Controller y Views reales de CodeIgniter 4. Se deja este archivo como
+ * referencia de la logica original; no se ejecuta en ningun request.
+ *
  * Panel del personal de bomberos: publica y mantiene las alertas del cuartel.
  * Cada bombero administra unicamente las alertas que el mismo creo.
  */
@@ -15,19 +20,8 @@ send_security_headers();
 $user   = require_role('bombero');
 $userId = (int) $user['id'];
 
-/** Solo permite operar sobre alertas propias. */
-function own_alert_or_fail(int $id, int $userId): array
-{
-    $alert = alert_find($id);
-    if ($alert === null || (int) $alert['created_by'] !== $userId) {
-        flash('error', 'Esa alerta no existe o fue creada por otro integrante del cuerpo.');
-        sdb_redirect('bomberos.php');
-    }
-
-    return $alert;
-}
-
 /* --------------------------------------------------------------- Acciones -- */
+/* own_alert_or_fail() se movio a app/Legacy/app/repository.php (Semana 3). */
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     csrf_verify();
