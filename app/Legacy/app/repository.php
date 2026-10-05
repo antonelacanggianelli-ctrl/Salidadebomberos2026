@@ -56,6 +56,18 @@ function alert_find(int $id): ?array
     return alert_model()->findWithAuthor($id);
 }
 
+/** Solo permite operar sobre alertas propias (usado por el panel de bomberos). */
+function own_alert_or_fail(int $id, int $userId): array
+{
+    $alert = alert_find($id);
+    if ($alert === null || (int) $alert['created_by'] !== $userId) {
+        flash('error', 'Esa alerta no existe o fue creada por otro integrante del cuerpo.');
+        sdb_redirect('bomberos.php');
+    }
+
+    return $alert;
+}
+
 /**
  * Valida los campos enviados desde el formulario de alertas.
  *
