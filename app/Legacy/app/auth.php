@@ -76,7 +76,7 @@ function csrf_verify(): void
 {
     $sent = $_POST['csrf'] ?? '';
 	if (!is_string($sent) || !hash_equals(sdb_csrf_token(), $sent)) {
-        http_response_code(419);
+        http_response_code(403);
         exit('Token de seguridad invalido o vencido. Vuelve atras y reintenta.');
     }
 }
