@@ -7,8 +7,8 @@ Thumbs.db
 .idea/
 
 # Archivos auxiliares de SQLite generados durante WAL
-/data/*.sqlite-wal
-/data/*.sqlite-shm
+*.sqlite-wal
+*.sqlite-shm
 
 # Configuración local no compartible
 .env
