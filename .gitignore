@@ -19,3 +19,4 @@ Thumbs.db
 *.log
 vendor/
 writable/session/ci_session*
+.vercel
