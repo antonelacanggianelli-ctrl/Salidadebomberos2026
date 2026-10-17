@@ -2,8 +2,12 @@
 declare(strict_types=1);
 
 /**
- * Panel de administracion: autoriza al personal de bomberos, supervisa las
- * alertas publicadas, mantiene los contactos de la portada y revisa la bitacora.
+ * Panel de administracion: supervisa las alertas publicadas, mantiene los
+ * contactos de la portada y revisa la bitacora.
+ *
+ * La gestion del personal autorizado (listado, alta, edicion, suspension y
+ * baja de cuentas) ya se migro a app/Controllers/Admin.php, que tambien es
+ * quien carga este archivo para el resto de las secciones.
  */
 
 require_once __DIR__ . '/app/auth.php';
@@ -15,50 +19,6 @@ send_security_headers();
 $admin   = require_role('admin');
 $adminId = (int) $admin['id'];
 
-/** Impide dejar el sistema sin ningun administrador activo. */
-function last_active_admin(int $id): bool
-{
-    $stmt = db()->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1 AND id <> ?");
-    $stmt->execute([$id]);
-
-    return (int) $stmt->fetchColumn() === 0;
-}
-
-/** Datos del formulario de usuario, ya validados. */
-function user_form_data(?int $editingId): array
-{
-    $errors = [];
-    // El rol queda fijo después de crear la cuenta. El selector se deshabilita
-    // en la vista de edición y, por eso, no viaja en el POST: debe recuperarse
-    // desde la base para no convertir accidentalmente un admin en bombero.
-    $existingRole = 'bombero';
-    if ($editingId !== null) {
-        $existing = user_find($editingId);
-        $existingRole = ($existing['role'] ?? '') === 'admin' ? 'admin' : 'bombero';
-    }
-    $data = [
-        'username'  => mb_strtolower(post_str('username', 30)),
-        'full_name' => post_str('full_name', 90),
-        'role'      => $editingId === null
-            ? (post_str('role', 10) === 'admin' ? 'admin' : 'bombero')
-            : $existingRole,
-        'rank'      => post_str('rank', 60),
-        'phone'     => post_str('phone', 40),
-        'active'    => isset($_POST['active']) ? 1 : 0,
-    ];
-
-    if (($problem = username_problem($data['username'])) !== null) {
-        $errors[] = $problem;
-    } elseif (username_taken($data['username'], $editingId)) {
-        $errors[] = 'Ese nombre de usuario ya esta en uso.';
-    }
-    if (mb_strlen($data['full_name']) < 3) {
-        $errors[] = 'Escribe el nombre y apellido del integrante.';
-    }
-
-    return [$data, $errors];
-}
-
 /* --------------------------------------------------------------- Acciones -- */
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -67,101 +27,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $id     = (int) ($_POST['id'] ?? 0);
 
     switch ($accion) {
-
-        /* ---- Personal autorizado ---- */
-        case 'usuario_guardar':
-            $editing = $id > 0;
-            [$data, $errors] = user_form_data($editing ? $id : null);
-            $password = (string) ($_POST['password'] ?? '');
-            $confirm  = (string) ($_POST['password2'] ?? '');
-            $mustChange = isset($_POST['must_change']);
-
-            if (!$editing || $password !== '' || $confirm !== '') {
-                if (($problem = password_problem($password, $confirm)) !== null) {
-                    $errors[] = $problem;
-                }
-            }
-
-            if ($errors !== []) {
-                stash_old($data);
-                flash('error', implode(' ', $errors));
-                sdb_redirect($editing
-                    ? 'admin.php?vista=usuario_editar&id=' . $id
-                    : 'admin.php?vista=usuario_nuevo');
-            }
-
-            if ($editing) {
-                $target = user_find($id);
-                if ($target === null) {
-                    flash('error', 'El usuario indicado no existe.');
-                    sdb_redirect('admin.php?vista=usuarios');
-                }
-                if ($id === $adminId && $data['active'] === 0) {
-                    flash('error', 'No puedes desactivar tu propia cuenta.');
-                    sdb_redirect('admin.php?vista=usuario_editar&id=' . $id);
-                }
-                if ($target['role'] === 'admin' && $data['active'] === 0 && last_active_admin($id)) {
-                    flash('error', 'Debe quedar al menos un administrador activo.');
-                    sdb_redirect('admin.php?vista=usuario_editar&id=' . $id);
-                }
-
-                user_update($id, $data);
-                if ($password !== '') {
-                    user_set_password($id, $password, $mustChange);
-                }
-                audit('usuario_editado', $data['username'], $admin);
-                flash('ok', 'Datos de ' . $data['full_name'] . ' actualizados.');
-            } else {
-                user_create($data, $password, $adminId, $mustChange);
-                audit('usuario_creado', $data['username'] . ' (' . $data['role'] . ')', $admin);
-                flash('ok', 'Se autorizo a ' . $data['full_name'] . '. Entregale el usuario "' . $data['username'] . '" y su contrasena inicial.');
-            }
-            sdb_redirect('admin.php?vista=usuarios');
-
-        case 'usuario_estado':
-            $target = user_find($id);
-            if ($target === null) {
-                flash('error', 'El usuario indicado no existe.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            $activar = post_str('valor', 5) === '1';
-            if (!$activar && $id === $adminId) {
-                flash('error', 'No puedes desactivar tu propia cuenta.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            if (!$activar && $target['role'] === 'admin' && last_active_admin($id)) {
-                flash('error', 'Debe quedar al menos un administrador activo.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            user_set_active($id, $activar);
-            audit($activar ? 'usuario_activado' : 'usuario_desactivado', $target['username'], $admin);
-            flash('ok', 'Cuenta de ' . $target['full_name'] . ($activar ? ' habilitada.' : ' suspendida.'));
-            sdb_redirect('admin.php?vista=usuarios');
-
-        case 'usuario_eliminar':
-            $target = user_find($id);
-            if ($target === null) {
-                flash('error', 'El usuario indicado no existe.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            if ($id === $adminId) {
-                flash('error', 'No puedes eliminar tu propia cuenta.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            if ($target['role'] === 'admin' && last_active_admin($id)) {
-                flash('error', 'Debe quedar al menos un administrador activo.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            if (user_alert_count($id) > 0) {
-                user_set_active($id, false);
-                audit('usuario_desactivado', $target['username'] . ' (tiene alertas asociadas)', $admin);
-                flash('warn', $target['full_name'] . ' tiene alertas publicadas, por eso se suspendio la cuenta en lugar de borrarla. Asi se conserva el historial.');
-                sdb_redirect('admin.php?vista=usuarios');
-            }
-            user_delete($id);
-            audit('usuario_eliminado', $target['username'], $admin);
-            flash('ok', 'Se elimino la cuenta de ' . $target['full_name'] . '.');
-            sdb_redirect('admin.php?vista=usuarios');
 
         /* ---- Alertas ---- */
         case 'alerta_guardar':
@@ -247,7 +112,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $vista = is_string($_GET['vista'] ?? null) ? $_GET['vista'] : 'resumen';
 $tab   = match ($vista) {
-    'usuarios', 'usuario_nuevo', 'usuario_editar' => 'Bomberos',
     'alertas', 'alerta_editar'                    => 'Alertas',
     'contactos'                                   => 'Contactos',
     'suscriptores'                                => 'Suscriptores',
@@ -257,16 +121,8 @@ $tab   = match ($vista) {
 
 // Los registros se buscan antes de dibujar nada: si no existen hay que poder
 // redirigir, y una redireccion despues de imprimir la pagina no funciona.
-$targetUser  = null;
 $targetAlert = null;
 
-if ($vista === 'usuario_editar') {
-    $targetUser = user_find((int) ($_GET['id'] ?? 0));
-    if ($targetUser === null) {
-        flash('error', 'El usuario indicado no existe.');
-        sdb_redirect('admin.php?vista=usuarios');
-    }
-}
 if ($vista === 'alerta_editar') {
     $targetAlert = alert_find((int) ($_GET['id'] ?? 0));
     if ($targetAlert === null) {
@@ -278,198 +134,6 @@ if ($vista === 'alerta_editar') {
 panel_head('Administracion', $admin, panel_tabs('admin'), $tab);
 
 switch ($vista) {
-
-/* ============================================================ USUARIOS ==== */
-case 'usuarios':
-    $bomberos = users_list('bombero');
-    $admins   = users_list('admin');
-    ?>
-	<div class="panel-title">
-		<div>
-			<h1>Personal autorizado</h1>
-			<p>Cada integrante ingresa con su propio usuario y contrasena, y responde por lo que publica.</p>
-		</div>
-		<a class="btn btn-primary" href="admin.php?vista=usuario_nuevo">+ Autorizar integrante</a>
-	</div>
-
-	<?php foreach ([['Bomberos autorizados', $bomberos, 'Publican y actualizan alertas.'], ['Administradores', $admins, 'Gestionan usuarios y supervisan el sistema.']] as [$titulo, $filas, $subtitulo]): ?>
-		<div class="block">
-			<header><div><h2><?= e($titulo) ?></h2><p><?= e($subtitulo) ?></p></div></header>
-			<?php if ($filas === []): ?>
-				<div class="block-inner"><div class="empty-state"><strong>Sin registros</strong>Aun no hay cuentas en esta categoria.</div></div>
-			<?php else: ?>
-				<div class="table-wrap">
-					<table class="grid">
-						<thead><tr><th>Integrante</th><th>Usuario</th><th>Alertas</th><th>Ultimo ingreso</th><th>Estado</th><th>Acciones</th></tr></thead>
-						<tbody>
-							<?php foreach ($filas as $u): ?>
-								<tr<?= (int) $u['active'] === 0 ? ' class="badge-off"' : '' ?>>
-									<td>
-										<b><?= e($u['full_name']) ?></b>
-										<div class="muted"><?= $u['rank'] !== '' ? e($u['rank']) : 'Sin cargo asignado' ?><?= $u['phone'] !== '' ? ' &middot; ' . e($u['phone']) : '' ?></div>
-									</td>
-									<td><code><?= e($u['username']) ?></code><?= (int) $u['id'] === $adminId ? ' <span class="tag neutral">Tu</span>' : '' ?></td>
-									<td class="num"><?= user_alert_count((int) $u['id']) ?></td>
-									<td class="muted"><?= e(fmt_dt($u['last_login_at'])) ?></td>
-									<td>
-										<span class="tag <?= (int) $u['active'] === 1 ? 'st-controlada' : 'st-cerrada' ?>">
-											<?= (int) $u['active'] === 1 ? 'activo' : 'suspendido' ?>
-										</span>
-										<?php if ((int) $u['must_change_password'] === 1): ?>
-											<span class="tag sev-media">clave provisoria</span>
-										<?php endif; ?>
-									</td>
-									<td>
-										<div class="row-actions">
-											<a class="btn btn-sm btn-line" href="admin.php?vista=usuario_editar&amp;id=<?= (int) $u['id'] ?>">Editar</a>
-											<?php if ((int) $u['id'] !== $adminId): ?>
-												<form class="inline-form" method="post" action="admin.php">
-													<?= sdb_csrf_field() ?>
-													<input type="hidden" name="accion" value="usuario_estado">
-													<input type="hidden" name="id" value="<?= (int) $u['id'] ?>">
-													<input type="hidden" name="valor" value="<?= (int) $u['active'] === 1 ? '0' : '1' ?>">
-													<button class="btn btn-sm btn-line" type="submit"><?= (int) $u['active'] === 1 ? 'Suspender' : 'Habilitar' ?></button>
-												</form>
-												<form class="inline-form" method="post" action="admin.php"
-												      onsubmit="return confirm('Eliminar la cuenta de <?= e($u['full_name']) ?>?');">
-													<?= sdb_csrf_field() ?>
-													<input type="hidden" name="accion" value="usuario_eliminar">
-													<input type="hidden" name="id" value="<?= (int) $u['id'] ?>">
-													<button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
-												</form>
-											<?php endif; ?>
-										</div>
-									</td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
-				</div>
-			<?php endif; ?>
-		</div>
-	<?php endforeach; ?>
-    <?php
-    break;
-
-/* ================================================ ALTA / EDICION USUARIO == */
-case 'usuario_nuevo':
-case 'usuario_editar':
-    $editing = $vista === 'usuario_editar';
-    $target  = [
-        'id' => 0, 'username' => '', 'full_name' => '', 'role' => 'bombero',
-        'rank' => '', 'phone' => '', 'active' => 1, 'must_change_password' => 1,
-    ];
-    if ($editing) {
-        $target = $targetUser;
-    }
-    $old = pull_old();
-    if ($old !== null) {
-        $target = array_merge($target, $old);
-    }
-    ?>
-	<div class="panel-title">
-		<div>
-			<h1><?= $editing ? 'Editar integrante' : 'Autorizar integrante' ?></h1>
-			<p><?= $editing
-				? 'Actualiza los datos de la cuenta. Deja la contrasena vacia para conservarla.'
-				: 'Crea la cuenta con la que esta persona podra publicar alertas.' ?></p>
-		</div>
-		<a class="btn btn-line btn-sm" href="admin.php?vista=usuarios">&larr; Volver al listado</a>
-	</div>
-
-	<div class="block">
-		<div class="block-inner">
-			<form method="post" action="admin.php">
-				<?= sdb_csrf_field() ?>
-				<input type="hidden" name="accion" value="usuario_guardar">
-				<input type="hidden" name="id" value="<?= (int) $target['id'] ?>">
-
-				<div class="field-row">
-					<div class="field">
-						<label for="full_name">Nombre y apellido</label>
-						<input id="full_name" name="full_name" type="text" maxlength="90" required
-						       value="<?= e($target['full_name']) ?>" placeholder="Ej.: Maria Gomez">
-					</div>
-					<div class="field">
-						<label for="username">Usuario de acceso</label>
-						<input id="username" name="username" type="text" maxlength="30" required
-						       value="<?= e($target['username']) ?>" placeholder="maria.gomez" autocomplete="off">
-						<span class="hint">Entre 4 y 30 caracteres: letras, numeros, punto, guion o guion bajo.</span>
-					</div>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="rank">Cargo o rango</label>
-						<input id="rank" name="rank" type="text" maxlength="60"
-						       value="<?= e($target['rank']) ?>" placeholder="Ej.: Sargento primero">
-					</div>
-					<div class="field">
-						<label for="phone">Telefono de contacto</label>
-						<input id="phone" name="phone" type="text" maxlength="40"
-						       value="<?= e($target['phone']) ?>" placeholder="Opcional">
-					</div>
-				</div>
-
-				<div class="field">
-					<label for="role">Rol en el sistema</label>
-					<select id="role" name="role" <?= $editing ? 'disabled' : '' ?>>
-						<option value="bombero" <?= $target['role'] === 'bombero' ? 'selected' : '' ?>>Bombero &mdash; publica y actualiza alertas</option>
-						<option value="admin" <?= $target['role'] === 'admin' ? 'selected' : '' ?>>Administrador &mdash; gestiona usuarios y supervisa todo</option>
-					</select>
-					<span class="hint"><?= $editing
-						? 'El rol no se modifica una vez creada la cuenta; si hace falta, crea una cuenta nueva.'
-						: 'Autoriza como bombero al personal que carga la informacion de las alertas.' ?></span>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="password"><?= $editing ? 'Nueva contrasena (opcional)' : 'Contrasena inicial' ?></label>
-					<input id="password" name="password" type="password" maxlength="200" autocomplete="new-password"
-						       <?= $editing ? '' : 'required' ?> placeholder="Minimo <?= MIN_PASSWORD_LENGTH ?> caracteres">
-					</div>
-					<div class="field">
-						<label for="password2">Repetir contrasena</label>
-					<input id="password2" name="password2" type="password" maxlength="200" autocomplete="new-password"
-						       <?= $editing ? '' : 'required' ?>>
-					</div>
-				</div>
-				<div class="form-actions" style="margin:-6px 0 16px;">
-					<button class="btn btn-sm btn-line" type="button" id="genPass">Generar contrasena segura</button>
-				</div>
-
-				<label class="check">
-					<input type="checkbox" name="must_change" value="1" <?= (int) ($target['must_change_password'] ?? 1) === 1 ? 'checked' : '' ?>>
-					<span>Pedir que cambie la contrasena en su primer ingreso (recomendado).</span>
-				</label>
-
-				<label class="check">
-					<input type="checkbox" name="active" value="1" <?= (int) $target['active'] === 1 ? 'checked' : '' ?>>
-					<span>Cuenta habilitada para ingresar al sistema.</span>
-				</label>
-
-				<div class="form-actions">
-					<button class="btn btn-primary" type="submit"><?= $editing ? 'Guardar cambios' : 'Autorizar y crear cuenta' ?></button>
-					<a class="btn btn-line" href="admin.php?vista=usuarios">Cancelar</a>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	<script>
-		document.getElementById('genPass').addEventListener('click', function () {
-			const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-			const bytes = new Uint32Array(12);
-			crypto.getRandomValues(bytes);
-			let out = '';
-			bytes.forEach(n => { out += abc[n % abc.length]; });
-			out = out.slice(0, 10) + (bytes[0] % 10) + 'a';
-			document.getElementById('password').value = out;
-			document.getElementById('password2').value = out;
-		});
-	</script>
-    <?php
-    break;
 
 /* ============================================================= ALERTAS ==== */
 case 'alertas':

@@ -13,7 +13,7 @@ panel_head('Panel de bomberos', $user, panel_tabs('bombero'), 'Mis alertas');
 
 <div class="panel-title">
 	<div>
-		<h1>Mis alertas MARCADOR_DEBUG_999</h1>
+		<h1>Mis alertas</h1>
 		<p>Hola <?= e($user['full_name']) ?>. Ultimo ingreso: <?= e(fmt_dt($user['last_login_at'])) ?>.</p>
 	</div>
 	<a class="btn btn-primary" href="bomberos.php?vista=nueva">+ Publicar alerta</a>

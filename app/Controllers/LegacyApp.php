@@ -6,15 +6,16 @@ namespace App\Controllers;
  * Puente temporal de migración: expone la aplicación existente mediante el
  * front controller de CodeIgniter, conservando visual y comportamiento.
  * Las páginas heredadas se irán separando en controladores y vistas CI4.
+ *
+ * Ya migradas (no deben servirse desde acá, para que nadie las alcance
+ * salteando los controladores y el filtro de rol): login.php, logout.php,
+ * admin.php (Admin), bomberos.php (Bomberos) y perfil.php (Perfil).
  */
 class LegacyApp extends BaseController
 {
     private function run(string $page): void
     {
-        $allowed = [
-            'index.php', 'login.php', 'logout.php', 'admin.php',
-            'bomberos.php', 'perfil.php', 'api.php', 'alerta.php',
-        ];
+        $allowed = ['index.php', 'api.php', 'alerta.php'];
         if (!in_array($page, $allowed, true)) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException($page);
         }
@@ -35,40 +36,12 @@ class LegacyApp extends BaseController
     {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         $page = basename($path);
-        $this->run(in_array($page, [
-            'login.php', 'logout.php', 'admin.php', 'bomberos.php',
-            'perfil.php', 'api.php', 'alerta.php',
-        ], true) ? $page : 'index.php');
+        $this->run(in_array($page, ['api.php', 'alerta.php'], true) ? $page : 'index.php');
     }
 
     public function alerta(): void
     {
         $this->run('alerta.php');
-    }
-
-    public function login(): void
-    {
-        $this->run('login.php');
-    }
-
-    public function logout(): void
-    {
-        $this->run('logout.php');
-    }
-
-    public function admin(): void
-    {
-        $this->run('admin.php');
-    }
-
-    public function bomberos(): void
-    {
-        $this->run('bomberos.php');
-    }
-
-    public function perfil(): void
-    {
-        $this->run('perfil.php');
     }
 
     public function api(): void
