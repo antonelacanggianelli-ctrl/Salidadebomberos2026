@@ -13,6 +13,7 @@
         "php": "^8.2",
         "ext-intl": "*",
         "ext-mbstring": "*",
+        "kreait/firebase-php": "7.0",
         "laminas/laminas-escaper": "^2.18",
         "psr/log": "^3.0"
     },
@@ -61,7 +62,12 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "policy": {
+            "advisories": {
+                "ignore-id": ["PKSA-y2cr-5h3j-g3ys"]
+            }
+        }
     },
     "scripts": {
         "test": "phpunit"
