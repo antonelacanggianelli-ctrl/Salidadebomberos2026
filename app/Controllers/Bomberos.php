@@ -50,6 +50,61 @@ class Bomberos extends Controller
         }
     }
 
+    /**
+     * Envia una notificacion push a todos los suscriptos (web y app Android)
+     * a traves de la API de alertas (Vercel + Firebase).
+     *
+     * Requiere en el archivo .env de la raiz del proyecto:
+     *     ALERTAS_API_KEY = la_clave_de_la_api
+     *
+     * Devuelve true si la API respondio 200. Nunca lanza excepciones:
+     * si algo falla, lo deja escrito en writable/logs.
+     */
+    private function enviarPush(string $titulo, string $mensaje): bool
+    {
+        try {
+            $clave = (string) env('ALERTAS_API_KEY', '');
+
+            if ($clave === '') {
+                log_message('error', 'enviarPush: falta ALERTAS_API_KEY en el .env');
+
+                return false;
+            }
+
+            $ch = curl_init('https://api-alertas.vercel.app/api/enviar');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'x-api-key: ' . $clave,
+                ],
+                CURLOPT_POSTFIELDS     => json_encode(
+                    ['titulo' => $titulo, 'mensaje' => $mensaje],
+                    JSON_UNESCAPED_UNICODE
+                ),
+            ]);
+
+            $respuesta = curl_exec($ch);
+            $codigo    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error     = curl_error($ch);
+            curl_close($ch);
+
+            if ($codigo !== 200) {
+                log_message('error', 'enviarPush: codigo ' . $codigo . ' ' . $error . ' ' . (string) $respuesta);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            log_message('error', 'enviarPush: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
     /** Procesa alta/edicion, cambio de estado y borrado. Siempre redirige. */
     private function handlePost(): never
     {
@@ -74,7 +129,19 @@ class Bomberos extends Controller
             } else {
                 $id = alert_create($data, $this->userId);
                 audit('alerta_creada', '#' . $id . ' ' . $data['title'], $this->user);
-                flash('ok', 'Alerta #' . $id . ' publicada. Ya es visible en la portada.');
+
+                // Notificacion push. Si falla, la alerta igual queda publicada.
+                $detalle = $data['description'] ?? $data['detail'] ?? $data['body'] ?? $data['message'] ?? '';
+                $texto   = mb_substr((string) $detalle, 0, 150);
+                $pushOk  = $this->enviarPush(
+                    (string) $data['title'],
+                    $texto !== '' ? $texto : 'Nueva alerta publicada.'
+                );
+
+                flash('ok', 'Alerta #' . $id . ' publicada. Ya es visible en la portada.'
+                    . ($pushOk
+                        ? ' Notificacion push enviada.'
+                        : ' (La notificacion push NO se pudo enviar, ver writable/logs.)'));
             }
             sdb_redirect('bomberos.php');
         }
