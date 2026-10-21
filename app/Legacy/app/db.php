@@ -282,6 +282,7 @@ function db_seed(PDO $pdo): void
     if ($hasAdmin === 0) {
         $stmt = $pdo->prepare(
                    'INSERT INTO users (username, password_hash, full_name, role, `rank`, active, must_change_password, created_at)
+                   
              VALUES (?, ?, ?, \'admin\', ?, 1, 1, ?)'
         );
         $stmt->execute([
