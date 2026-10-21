@@ -67,7 +67,7 @@ function db_install_sqlite(PDO $pdo): void
             password_hash        TEXT NOT NULL,
             full_name            TEXT NOT NULL,
             role                 TEXT NOT NULL CHECK (role IN ('admin','bombero')),
-            rank                 TEXT NOT NULL DEFAULT '',
+            "rank"                 TEXT NOT NULL DEFAULT '',
             phone                TEXT NOT NULL DEFAULT '',
             active               INTEGER NOT NULL DEFAULT 1,
             must_change_password INTEGER NOT NULL DEFAULT 0,

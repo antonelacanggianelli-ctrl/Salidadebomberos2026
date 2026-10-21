@@ -1,0 +1,8 @@
+.git
+.gitignore
+.env
+node_modules
+writable/logs/*.log
+writable/session/ci_session*
+writable/cache/*
+*.zip
