@@ -21,3 +21,6 @@ vendor/
 writable/session/ci_session*
 .vercel
 writable/debugbar/
+
+app/Config/firebase-credentials.json
+
