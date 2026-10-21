@@ -272,9 +272,9 @@ function username_problem(string $username): ?string
 function user_create(array $data, string $password, ?int $createdBy, bool $mustChange = true): int
 {
     $stmt = db()->prepare(
-        'INSERT INTO users (username, password_hash, full_name, role, rank, phone, active,
-                            must_change_password, created_at, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+       'INSERT INTO users (username, password_hash, full_name, role, `rank`, phone, active,
+                    must_change_password, created_at, created_by)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $data['username'],
