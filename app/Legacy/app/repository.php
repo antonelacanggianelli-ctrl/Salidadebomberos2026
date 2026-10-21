@@ -362,44 +362,6 @@ function contact_delete(int $id): void
     db()->prepare('DELETE FROM contacts WHERE id = ?')->execute([$id]);
 }
 
-/* ----------------------------------------------------------- Suscriptores -- */
-
-function subscriber_phone_taken(string $phone): bool
-{
-    $stmt = db()->prepare('SELECT COUNT(*) FROM subscribers WHERE phone = ?');
-    $stmt->execute([$phone]);
-
-    return (int) $stmt->fetchColumn() > 0;
-}
-
-function subscriber_create(string $name, string $phone): int
-{
-    $stmt = db()->prepare('INSERT INTO subscribers (name, phone, active, created_at) VALUES (?, ?, 1, ?)');
-    $stmt->execute([$name, $phone, now_utc()]);
-
-    return (int) db()->lastInsertId();
-}
-
-function subscribers_all(): array
-{
-    return db()->query('SELECT * FROM subscribers ORDER BY active DESC, created_at DESC')->fetchAll();
-}
-
-function subscriber_set_active(int $id, bool $active): void
-{
-    db()->prepare('UPDATE subscribers SET active = ? WHERE id = ?')->execute([$active ? 1 : 0, $id]);
-}
-
-function subscriber_delete(int $id): void
-{
-    db()->prepare('DELETE FROM subscribers WHERE id = ?')->execute([$id]);
-}
-
-function subscribers_count_active(): int
-{
-    return (int) db()->query('SELECT COUNT(*) FROM subscribers WHERE active = 1')->fetchColumn();
-}
-
 /* -------------------------------------------------------------- Bitacora -- */
 
 function audit_recent(int $limit = 25): array

@@ -89,20 +89,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             audit('contacto_eliminado', '#' . $id, $admin);
             flash('ok', 'Contacto eliminado.');
             sdb_redirect('admin.php?vista=contactos');
-
-        /* ---- Suscriptores de SMS ---- */
-        case 'suscriptor_estado':
-            $activar = post_str('valor', 5) === '1';
-            subscriber_set_active($id, $activar);
-            audit($activar ? 'suscriptor_activado' : 'suscriptor_desactivado', '#' . $id, $admin);
-            flash('ok', $activar ? 'Numero reactivado.' : 'Numero dado de baja.');
-            sdb_redirect('admin.php?vista=suscriptores');
-
-        case 'suscriptor_eliminar':
-            subscriber_delete($id);
-            audit('suscriptor_eliminado', '#' . $id, $admin);
-            flash('ok', 'Numero eliminado de la lista.');
-            sdb_redirect('admin.php?vista=suscriptores');
     }
 
     sdb_redirect('admin.php');
@@ -114,7 +100,6 @@ $vista = is_string($_GET['vista'] ?? null) ? $_GET['vista'] : 'resumen';
 $tab   = match ($vista) {
     'alertas', 'alerta_editar'                    => 'Alertas',
     'contactos'                                   => 'Contactos',
-    'suscriptores'                                => 'Suscriptores',
     'bitacora'                                    => 'Bitacora',
     default                                       => 'Resumen',
 };
@@ -356,78 +341,6 @@ case 'contactos':
     <?php
     break;
 
-/* ========================================================= SUSCRIPTORES ==== */
-case 'suscriptores':
-    $subs = subscribers_all();
-    ?>
-	<div class="panel-title">
-		<div>
-			<h1>Suscriptores de SMS</h1>
-			<p>Vecinos que pidieron recibir un aviso por mensaje cuando se publica una alerta. El envio no es automatico: usa esta lista para escribirles por SMS o WhatsApp cuando corresponda.</p>
-		</div>
-		<button class="btn btn-line btn-sm" type="button" id="copiarNumeros">Copiar todos los numeros</button>
-	</div>
-
-	<div class="cards">
-		<div class="card accent-green"><small>Activos</small><b><?= subscribers_count_active() ?></b></div>
-		<div class="card"><small>Total anotados</small><b><?= count($subs) ?></b></div>
-	</div>
-
-	<div class="block">
-		<?php if ($subs === []): ?>
-			<div class="block-inner"><div class="empty-state"><strong>Sin anotados todavia</strong>Cuando alguien se suscriba desde la portada, va a aparecer aca.</div></div>
-		<?php else: ?>
-			<div class="table-wrap">
-				<table class="grid">
-					<thead><tr><th>Nombre</th><th>Celular</th><th>Anotado</th><th>Estado</th><th>Acciones</th></tr></thead>
-					<tbody>
-						<?php foreach ($subs as $s): ?>
-							<tr<?= (int) $s['active'] === 0 ? ' class="badge-off"' : '' ?>>
-								<td><?= $s['name'] !== '' ? e($s['name']) : '<span class="muted">Sin nombre</span>' ?></td>
-								<td><code><?= e($s['phone']) ?></code></td>
-								<td class="muted"><?= e(fmt_dt($s['created_at'])) ?></td>
-								<td><span class="tag <?= (int) $s['active'] === 1 ? 'st-controlada' : 'st-cerrada' ?>"><?= (int) $s['active'] === 1 ? 'activo' : 'de baja' ?></span></td>
-								<td>
-									<div class="row-actions">
-										<form class="inline-form" method="post" action="admin.php">
-											<?= sdb_csrf_field() ?>
-											<input type="hidden" name="accion" value="suscriptor_estado">
-											<input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
-											<input type="hidden" name="valor" value="<?= (int) $s['active'] === 1 ? '0' : '1' ?>">
-											<button class="btn btn-sm btn-line" type="submit"><?= (int) $s['active'] === 1 ? 'Dar de baja' : 'Reactivar' ?></button>
-										</form>
-										<form class="inline-form" method="post" action="admin.php"
-										      onsubmit="return confirm('Eliminar este numero de la lista?');">
-											<?= sdb_csrf_field() ?>
-											<input type="hidden" name="accion" value="suscriptor_eliminar">
-											<input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
-											<button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
-										</form>
-									</div>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-		<?php endif; ?>
-	</div>
-
-	<script>
-		document.getElementById('copiarNumeros')?.addEventListener('click', function () {
-			const numeros = <?= json_encode(array_column(array_filter($subs, static fn ($s) => (int) $s['active'] === 1), 'phone'), JSON_UNESCAPED_SLASHES) ?>;
-			if (numeros.length === 0) { return; }
-			navigator.clipboard.writeText(numeros.join(', ')).then(() => {
-				const btn = document.getElementById('copiarNumeros');
-				const original = btn.textContent;
-				btn.textContent = 'Copiado!';
-				setTimeout(() => { btn.textContent = original; }, 2000);
-			});
-		});
-	</script>
-    <?php
-    break;
-
 /* ============================================================ BITACORA ==== */
 case 'bitacora':
     $registros = audit_recent(60);
@@ -486,7 +399,6 @@ default:
 		<div class="card accent-green"><small>Cerradas</small><b><?= $stats['cerradas'] ?? 0 ?></b></div>
 		<div class="card"><small>Bomberos activos</small><b><?= $ustats['bomberos_activos'] ?? 0 ?></b></div>
 		<div class="card"><small>Administradores</small><b><?= $ustats['admins'] ?? 0 ?></b></div>
-		<div class="card"><small>Suscriptores SMS</small><b><?= subscribers_count_active() ?></b></div>
 	</div>
 
 	<?php if ((int) $admin['must_change_password'] === 1): ?>

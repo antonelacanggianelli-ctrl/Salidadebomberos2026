@@ -28,7 +28,7 @@ La situación puede producir pérdida de tiempo, información incompleta, duplic
 
 ## Información involucrada
 
-La aplicación registra usuarios, roles, alertas, tipo de emergencia, severidad, estado, ubicación, descripción, instrucciones, punto de encuentro, fecha, responsable, contactos públicos, suscriptores y bitácora de acciones.
+La aplicación registra usuarios, roles, alertas, tipo de emergencia, severidad, estado, ubicación, descripción, instrucciones, punto de encuentro, fecha, responsable, contactos públicos y bitácora de acciones.
 
 ## Resultado útil esperado
 
