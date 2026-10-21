@@ -24,4 +24,4 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
 
 # Render indica el puerto en la variable PORT. Si existe un Secret File llamado .env,
 # se copia a la carpeta del proyecto antes de arrancar Apache.
-CMD ["sh", "-c", "if [ -f /etc/secrets/.env ]; then cp /etc/secrets/.env /var/www/html/.env; fi; sed -i \"s/Listen 80/Listen ${PORT:-80}/\" /etc/apache2/ports.conf; sed -i \"s/:80>/:${PORT:-80}>/\" /etc/apache2/sites-available/000-default.conf; apache2-foreground"]
+CMD ["sh", "-c", "if [ -f /etc/secrets/firebase-credentials.json ]; then cp /etc/secrets/firebase-credentials.json /var/www/html/app/Config/firebase-credentials.json; fi; sed -i \"s/Listen 80/Listen ${PORT:-80}/\" /etc/apache2/ports.conf; sed -i \"s/:80>/:${PORT:-80}>/\" /etc/apache2/sites-available/000-default.conf; apache2-foreground"]
