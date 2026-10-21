@@ -1,4 +1,4 @@
-FROM php:8.3-apache
+FROM php:8.2-apache
 
 # Extensiones que necesita CodeIgniter 4 (curl y mbstring ya vienen incluidas)
 RUN apt-get update \
