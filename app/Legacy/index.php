@@ -77,6 +77,7 @@ $mainExit    = $enAlarma ? 'Sigue la ruta de evacuacion' : 'Operatividad normal'
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/app.css?v=4">
+    <meta name="csrf-token" content="<?= e(sdb_csrf_token()) ?>">
 </head>
 <body>
     <header>
@@ -323,6 +324,32 @@ $mainExit    = $enAlarma ? 'Sigue la ruta de evacuacion' : 'Operatividad normal'
                         <strong>103 / (02241) 43-1341</strong>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section class="section" id="notificaciones" style="background:var(--paper);">
+            <div class="shell">
+                <p class="section-kicker">Avisos al instante</p>
+                <h2>Notificaciones en tu dispositivo</h2>
+                <p class="contact-copy" style="max-width:640px;">Activalas una vez y vas a recibir el aviso apenas se publique o se cierre una alerta, aunque no tengas esta pagina abierta.</p>
+
+                <?php if (fcm_client_ready()): ?>
+                    <div class="field" style="max-width:280px;margin-top:18px;">
+                        <label for="push_zone">Avisarme de esta zona</label>
+                        <select id="push_zone">
+                            <option value="">Todas las zonas</option>
+                            <?php foreach (ALERT_ZONES as $zone): ?>
+                                <option value="<?= e($zone) ?>"><?= e($zone) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button id="pushEnableBtn" class="btn btn-primary" type="button" style="margin-top:14px;">Activar notificaciones en este dispositivo</button>
+                    <p id="pushStatus" class="muted" style="margin-top:10px;"></p>
+                    <script>window.__FCM_CONFIG__ = <?= json_encode(fcm_client_config(), JSON_UNESCAPED_SLASHES) ?>;</script>
+                    <script src="assets/push.js" defer></script>
+                <?php else: ?>
+                    <p class="muted" style="margin-top:14px;">Las notificaciones push todavia no estan configuradas de este lado.</p>
+                <?php endif; ?>
             </div>
         </section>
     </main>

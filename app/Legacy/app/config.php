@@ -85,11 +85,13 @@ const ALERT_ZONES = [
 // Completar con las credenciales reales del proyecto de Firebase antes de
 // habilitar el envio en produccion. Mientras esten vacias, el sistema sigue
 // funcionando con normalidad: solo no se dispara la notificacion push.
-const FCM_PROJECT_ID          = '';
-const FCM_SERVICE_ACCOUNT_KEY = DATA_DIR . '/firebase-service-account.json';
-const FCM_VAPID_PUBLIC_KEY    = '';
-const FCM_WEB_API_KEY         = '';
-const FCM_APP_ID              = '';
-const FCM_MESSAGING_SENDER_ID = '';
+const FCM_PROJECT_ID          = 'salidadebomberos';
+// Gemini ya habia guardado la cuenta de servicio en app/Config/firebase-credentials.json
+// (y ya esta en .gitignore ahi), asi que apuntamos a esa ruta en vez de duplicar el archivo.
+const FCM_SERVICE_ACCOUNT_KEY = APPPATH . 'Config/firebase-credentials.json';
+const FCM_VAPID_PUBLIC_KEY    = 'BJJswKANhRBmOxRw1vjZ2RheuGQG8TsvgSDfV1pQyo7KpaqH4kMta8qrQvsaRj2J7wZTwtadB1fedHuVUOucVQc';
+const FCM_WEB_API_KEY         = 'AIzaSyCMnWUGnpEsVOOuMVWbKiWmtLKLRin1EdA';
+const FCM_APP_ID              = '1:183433473749:web:50a22e0076c90c0d62bc5c';
+const FCM_MESSAGING_SENDER_ID = '183433473749';
 
 date_default_timezone_set('UTC');
