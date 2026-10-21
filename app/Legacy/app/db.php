@@ -281,7 +281,7 @@ function db_seed(PDO $pdo): void
     $hasAdmin = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
     if ($hasAdmin === 0) {
         $stmt = $pdo->prepare(
-            'INSERT INTO users (username, password_hash, full_name, role, rank, active, must_change_password, created_at)
+                   'INSERT INTO users (username, password_hash, full_name, role, `rank`, active, must_change_password, created_at)
              VALUES (?, ?, ?, \'admin\', ?, 1, 1, ?)'
         );
         $stmt->execute([
