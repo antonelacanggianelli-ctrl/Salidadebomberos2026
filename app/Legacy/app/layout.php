@@ -103,7 +103,6 @@ function panel_tabs(string $role): array
             'Bomberos'  => 'admin.php?vista=usuarios',
             'Alertas'   => 'admin.php?vista=alertas',
             'Contactos' => 'admin.php?vista=contactos',
-            'Suscriptores' => 'admin.php?vista=suscriptores',
             'Bitacora'  => 'admin.php?vista=bitacora',
             'Mi perfil' => 'perfil.php',
         ];

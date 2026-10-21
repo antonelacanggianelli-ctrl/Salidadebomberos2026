@@ -158,26 +158,3 @@ function status_class(string $status): string
     };
 }
 
-/** Deja solo digitos, conservando un '+' inicial si lo escribieron. */
-function normalize_phone(string $raw): string
-{
-    $raw    = trim($raw);
-    $plus   = str_starts_with($raw, '+') ? '+' : '';
-    $digits = preg_replace('/\D+/', '', $raw) ?? '';
-
-    return $plus . $digits;
-}
-
-/** Valida un celular ya normalizado. Devuelve null si es valido. */
-function phone_problem(string $phone): ?string
-{
-    $digits = ltrim($phone, '+');
-    if ($digits === '' || !ctype_digit($digits)) {
-        return 'Ingresa un numero de celular valido.';
-    }
-    if (mb_strlen($digits) < 8 || mb_strlen($digits) > 15) {
-        return 'El numero debe tener entre 8 y 15 digitos, con codigo de area.';
-    }
-
-    return null;
-}

@@ -7,7 +7,7 @@
 | `users` | Personas autorizadas, rol, estado y credenciales. |
 | `alerts` | Incidentes publicados y su ciclo de vida. |
 | `contacts` | Teléfonos y ubicaciones mostrados en la portada. |
-| `subscribers` | Números anotados para futuros avisos manuales o externos. |
+| `subscribers` | Sin uso: quedó de la suscripción por SMS, que se eliminó. Se conserva para no romper bases ya instaladas. |
 | `audit_log` | Trazabilidad de acciones del sistema. |
 | `login_attempts` | Control de intentos fallidos y bloqueo temporal. |
 

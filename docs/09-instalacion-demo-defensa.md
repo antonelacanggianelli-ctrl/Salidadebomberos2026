@@ -51,4 +51,4 @@
 
 ## Limitaciones conocidas
 
-El envío de SMS/WhatsApp no está implementado; los suscriptores sólo se registran para una futura integración o aviso manual. La base incluida es de demostración y debe respaldarse antes de modificarla.
+El envío de SMS/WhatsApp no está implementado y la suscripción por número de celular se eliminó; los avisos al instante se ofrecen mediante notificaciones push del navegador. La base incluida es de demostración y debe respaldarse antes de modificarla.

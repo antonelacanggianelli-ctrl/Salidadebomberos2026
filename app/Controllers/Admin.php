@@ -12,8 +12,8 @@ use CodeIgniter\Controller;
  *
  * La migracion es por partes: la gestion del personal autorizado (listado,
  * alta, edicion, suspension y baja) ya vive en este Controller y en
- * Views/admin/. El resto de las secciones (resumen, alertas, contactos,
- * suscriptores y bitacora) se siguen atendiendo con app/Legacy/admin.php
+ * Views/admin/. El resto de las secciones (resumen, alertas, contactos y
+ * bitacora) se siguen atendiendo con app/Legacy/admin.php
  * hasta que se migren.
  */
 class Admin extends Controller

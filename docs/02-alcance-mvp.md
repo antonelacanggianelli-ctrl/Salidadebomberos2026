@@ -40,4 +40,4 @@ El MVP se considera aceptado cuando el flujo completo **login → carga de alert
 
 ## Decisiones de alcance
 
-La gestión de suscriptores se conserva como una función secundaria de la aplicación, pero el envío de mensajes queda expresamente fuera del MVP. De este modo no se elimina código existente, pero se evita presentar como implementada una integración externa que el proyecto no resuelve.
+La gestión de suscriptores por SMS se eliminó de la aplicación: sin un envío real de mensajes, la lista de números no aportaba valor y podía confundir a los vecinos. El envío de mensajes queda expresamente fuera del MVP; los avisos al instante se resuelven con las notificaciones push del navegador.
