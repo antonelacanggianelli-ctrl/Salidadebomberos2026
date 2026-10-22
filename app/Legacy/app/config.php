@@ -18,17 +18,10 @@ const DATA_DIR = __DIR__ . '/../data';
 const DB_FILE  = DATA_DIR . '/salidadebomberos.sqlite';
 
 /**
- * Motor de base de datos (Semana 2 del plan de trabajo).
- *
- * Por defecto la app sigue usando SQLite (DB_DRIVER=sqlite): no requiere
- * un servidor aparte, así cualquiera del equipo la clona y la corre sin
- * instalar nada mas, ideal para desarrollo y para la demo de defensa.
- *
- * Para usar MySQL/MariaDB (como pedia originalmente el plan de trabajo),
- * definir la variable de entorno DB_DRIVER=mysql y completar el resto de
- * las variables DB_* antes de levantar el servidor. Ambos motores usan
- * exactamente el mismo esquema (ver db_install_sqlite/db_install_mysql
- * en db.php) y el resto de la aplicacion no cambia una linea.
+ * Motor de base de datos.
+ * Por defecto SQLite (DB_DRIVER=sqlite). Para MySQL/MariaDB definir la
+ * variable de entorno DB_DRIVER=mysql y completar las variables DB_*.
+ * Ambos motores usan el mismo esquema (ver db.php).
  */
 define('DB_DRIVER', 'mysql' === (getenv('DB_DRIVER') ?: 'sqlite') ? 'mysql' : 'sqlite');
 define('DB_MYSQL_HOST', false !== getenv('DB_HOST') ? getenv('DB_HOST') : '127.0.0.1');
@@ -68,10 +61,7 @@ const ALERT_TYPES = [
 const ALERT_SEVERITIES = ['baja', 'media', 'alta', 'critica'];
 const ALERT_STATUSES   = ['activa', 'controlada', 'cerrada'];
 
-/**
- * Zonas del partido para poder filtrar alertas por area geografica.
- * Ajustar esta lista con las zonas reales que use el cuartel.
- */
+// Zonas del partido para poder filtrar alertas por area geografica.
 const ALERT_ZONES = [
     'Centro',
     'Zona Norte',
@@ -82,14 +72,26 @@ const ALERT_ZONES = [
 ];
 
 // Configuracion de Firebase Cloud Messaging (notificaciones push del portal).
-// Completar con las credenciales reales del proyecto de Firebase antes de
-// habilitar el envio en produccion. Mientras esten vacias, el sistema sigue
-// funcionando con normalidad: solo no se dispara la notificacion push.
-const FCM_PROJECT_ID          = '';
-const FCM_SERVICE_ACCOUNT_KEY = DATA_DIR . '/firebase-service-account.json';
-const FCM_VAPID_PUBLIC_KEY    = '';
-const FCM_WEB_API_KEY         = '';
-const FCM_APP_ID              = '';
-const FCM_MESSAGING_SENDER_ID = '';
+// En Render, la cuenta de servicio se carga como Secret File
+// (/etc/secrets/firebase-credentials.json) y las claves web como variables
+// de entorno. En local se usa el archivo de la carpeta data/.
+$fcmKeyFile = '/etc/secrets/firebase-credentials.json';
+if (!is_file($fcmKeyFile)) {
+    $fcmKeyFile = DATA_DIR . '/firebase-service-account.json';
+}
+
+// El project_id tambien esta dentro del JSON de credenciales.
+$fcmProjectFromKey = '';
+if (is_file($fcmKeyFile)) {
+    $decoded = json_decode((string) file_get_contents($fcmKeyFile), true);
+    $fcmProjectFromKey = is_array($decoded) ? (string) ($decoded['project_id'] ?? '') : '';
+}
+
+define('FCM_PROJECT_ID', getenv('FCM_PROJECT_ID') ?: $fcmProjectFromKey);
+define('FCM_SERVICE_ACCOUNT_KEY', getenv('FCM_SERVICE_ACCOUNT_KEY') ?: $fcmKeyFile);
+define('FCM_VAPID_PUBLIC_KEY', getenv('FCM_VAPID_PUBLIC_KEY') ?: '');
+define('FCM_WEB_API_KEY', getenv('FCM_WEB_API_KEY') ?: '');
+define('FCM_APP_ID', getenv('FCM_APP_ID') ?: '');
+define('FCM_MESSAGING_SENDER_ID', getenv('FCM_MESSAGING_SENDER_ID') ?: '');
 
 date_default_timezone_set('UTC');
