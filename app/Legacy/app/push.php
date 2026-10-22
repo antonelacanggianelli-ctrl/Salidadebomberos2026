@@ -52,12 +52,18 @@ function fcm_client_config(): array
 function device_token_register(string $token, string $zone = ''): void
 {
     $now = now_utc();
-    $stmt = db()->prepare(
-        'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
-         VALUES (?, ?, 1, ?, ?)
-         ON CONFLICT(token) DO UPDATE SET zone = excluded.zone, active = 1, last_seen_at = excluded.last_seen_at'
-    );
-    $stmt->execute([$token, $zone, $now, $now]);
+
+    if (db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+        $sql = 'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
+                VALUES (?, ?, 1, ?, ?)
+                ON DUPLICATE KEY UPDATE zone = VALUES(zone), active = 1, last_seen_at = VALUES(last_seen_at)';
+    } else {
+        $sql = 'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
+                VALUES (?, ?, 1, ?, ?)
+                ON CONFLICT(token) DO UPDATE SET zone = excluded.zone, active = 1, last_seen_at = excluded.last_seen_at';
+    }
+
+    db()->prepare($sql)->execute([$token, $zone, $now, $now]);
 }
 
 function device_token_unregister(string $token): void
@@ -127,10 +133,13 @@ function fcm_send_to_zone(string $zone, array $notification): void
 {
     $tokens = device_tokens_active($zone);
     if ($tokens === []) {
+        error_log('PUSH: no hay dispositivos registrados (tokens activos = 0)');
         return;
     }
 
     if (!fcm_is_configured()) {
+        error_log('PUSH: Firebase no configurado. project=' . (FCM_PROJECT_ID !== '' ? 'ok' : 'VACIO')
+            . ' archivo=' . FCM_SERVICE_ACCOUNT_KEY . ' existe=' . (is_file(FCM_SERVICE_ACCOUNT_KEY) ? 'si' : 'NO'));
         audit('push_omitido', 'Firebase no configurado. Se hubiera notificado a ' . count($tokens) . ' dispositivo(s): ' . $notification['title']);
         return;
     }
@@ -138,6 +147,7 @@ function fcm_send_to_zone(string $zone, array $notification): void
     try {
         $accessToken = fcm_access_token();
     } catch (Throwable $e) {
+        error_log('PUSH ERROR token: ' . $e->getMessage());
         audit('push_error', 'No se pudo obtener token de acceso de Firebase: ' . $e->getMessage());
         return;
     }
@@ -153,6 +163,7 @@ function fcm_send_to_zone(string $zone, array $notification): void
         }
     }
 
+    error_log('PUSH: enviados ' . $enviados . '/' . count($tokens));
     audit('push_enviado', $notification['title'] . ' -> ' . $enviados . '/' . count($tokens) . ' dispositivo(s).');
 }
 
@@ -184,8 +195,11 @@ function fcm_send_single(string $accessToken, string $token, array $notification
         ],
         CURLOPT_POSTFIELDS => $body,
     ]);
-    curl_exec($ch);
+    $resp = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($status < 200 || $status >= 300) {
+        error_log('PUSH ERROR FCM http=' . $status . ' curl=' . curl_error($ch) . ' resp=' . substr((string) $resp, 0, 300));
+    }
     curl_close($ch);
 
     return $status >= 200 && $status < 300;
@@ -239,7 +253,7 @@ function fcm_access_token(): string
 
     $data = json_decode((string) $response, true);
     if (!isset($data['access_token'])) {
-        throw new RuntimeException('Firebase no devolvio un access token valido.');
+                throw new RuntimeException('Firebase no devolvio un access token valido. Respuesta: ' . substr((string) $response, 0, 300));
     }
 
     return $data['access_token'];
