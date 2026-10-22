@@ -75,15 +75,22 @@ const ALERT_ZONES = [
 // En Render, la cuenta de servicio se carga como Secret File
 // (/etc/secrets/firebase-credentials.json) y las claves web como variables
 // de entorno. En local se usa el archivo de la carpeta data/.
-$fcmKeyFile = '/etc/secrets/firebase-credentials.json';
-if (!is_file($fcmKeyFile)) {
-    $fcmKeyFile = DATA_DIR . '/firebase-service-account.json';
+$fcmKeyFile = DATA_DIR . '/firebase-service-account.json';
+foreach ([
+    '/var/www/html/app/Config/firebase-credentials.json',
+    '/etc/secrets/firebase-credentials.json',
+    DATA_DIR . '/firebase-service-account.json',
+] as $fcmCandidate) {
+    if (is_readable($fcmCandidate)) {
+        $fcmKeyFile = $fcmCandidate;
+        break;
+    }
 }
 
 // El project_id tambien esta dentro del JSON de credenciales.
 $fcmProjectFromKey = '';
-if (is_file($fcmKeyFile)) {
-    $decoded = json_decode((string) file_get_contents($fcmKeyFile), true);
+if (is_readable($fcmKeyFile)) {
+    $decoded = json_decode((string) @file_get_contents($fcmKeyFile), true);
     $fcmProjectFromKey = is_array($decoded) ? (string) ($decoded['project_id'] ?? '') : '';
 }
 
