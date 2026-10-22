@@ -52,12 +52,18 @@ function fcm_client_config(): array
 function device_token_register(string $token, string $zone = ''): void
 {
     $now = now_utc();
-    $stmt = db()->prepare(
-           'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
-         VALUES (?, ?, 1, ?, ?)
-         ON DUPLICATE KEY UPDATE zone = VALUES(zone), active = 1, last_seen_at = VALUES(last_seen_at)'
-    );
-    $stmt->execute([$token, $zone, $now, $now]);
+
+    if (db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+        $sql = 'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
+                VALUES (?, ?, 1, ?, ?)
+                ON DUPLICATE KEY UPDATE zone = VALUES(zone), active = 1, last_seen_at = VALUES(last_seen_at)';
+    } else {
+        $sql = 'INSERT INTO device_tokens (token, zone, active, created_at, last_seen_at)
+                VALUES (?, ?, 1, ?, ?)
+                ON CONFLICT(token) DO UPDATE SET zone = excluded.zone, active = 1, last_seen_at = excluded.last_seen_at';
+    }
+
+    db()->prepare($sql)->execute([$token, $zone, $now, $now]);
 }
 
 function device_token_unregister(string $token): void
