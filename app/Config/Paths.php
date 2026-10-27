@@ -56,6 +56,23 @@ class Paths
     public string $writableDirectory = __DIR__ . '/../../writable';
 
     /**
+     * En Vercel el disco es de solo lectura (salvo /tmp): usamos una carpeta
+     * temporal para caché y archivos descartables. No guardar datos acá.
+     */
+    public function __construct()
+    {
+        if (getenv('VERCEL') !== false) {
+            $dir = sys_get_temp_dir() . '/writable';
+            foreach (['cache', 'logs', 'session', 'debugbar', 'uploads'] as $sub) {
+                if (! is_dir($dir . '/' . $sub)) {
+                    @mkdir($dir . '/' . $sub, 0775, true);
+                }
+            }
+            $this->writableDirectory = $dir;
+        }
+    }
+
+    /**
      * ---------------------------------------------------------------
      * TESTS DIRECTORY NAME
      * ---------------------------------------------------------------
