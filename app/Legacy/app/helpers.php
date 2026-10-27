@@ -134,6 +134,19 @@ function client_ip(): string
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
+    // En Vercel la aplicacion queda detras de su proxy y REMOTE_ADDR no es el
+    // visitante. Vercel reescribe estas cabeceras (no se pueden falsificar desde
+    // afuera), por eso solo se leen cuando corre ahi (variable VERCEL).
+    if (getenv('VERCEL') !== false) {
+        foreach (['HTTP_X_VERCEL_FORWARDED_FOR', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP'] as $header) {
+            $candidate = trim(explode(',', (string) ($_SERVER[$header] ?? ''))[0]);
+            if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
+                $ip = $candidate;
+                break;
+            }
+        }
+    }
+
     return is_string($ip) ? mb_substr($ip, 0, 45) : '0.0.0.0';
 }
 
