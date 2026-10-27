@@ -1,0 +1,10 @@
+# Lo que NO debe subirse a Vercel (no es parte de la aplicación)
+api/hola.js
+salidadebomberos2026/
+writable/session/
+writable/logs/
+writable/debugbar/
+app/Legacy/data/
+tests/
+docs/
+.git/
