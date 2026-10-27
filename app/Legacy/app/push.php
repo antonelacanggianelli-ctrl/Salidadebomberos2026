@@ -129,8 +129,22 @@ function fcm_notify_alert_closed(int $alertId): void
  *
  * @param array{title:string, body:string, tag?:string} $notification
  */
+/**
+ * El envio de avisos lo hace UN solo camino: la API externa (Bomberos::enviarPush).
+ * Este envio directo a Firebase queda apagado salvo que se defina PUSH_DIRECT=1,
+ * para evitar que un mismo dispositivo reciba cada aviso dos veces.
+ */
+function fcm_direct_enabled(): bool
+{
+    return getenv('PUSH_DIRECT') === '1';
+}
+
 function fcm_send_to_zone(string $zone, array $notification): void
 {
+    if (!fcm_direct_enabled()) {
+        return;
+    }
+
     $tokens = device_tokens_active($zone);
     if ($tokens === []) {
         error_log('PUSH: no hay dispositivos registrados (tokens activos = 0)');

@@ -279,7 +279,9 @@ function db_seed(PDO $pdo): void
 {
     // Administrador inicial.
     $hasAdmin = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
-    if ($hasAdmin === 0) {
+    if ($hasAdmin === 0 && (BOOTSTRAP_ADMIN_USER === '' || strlen(BOOTSTRAP_ADMIN_PASS) < MIN_PASSWORD_LENGTH)) {
+        error_log('SETUP: no hay administrador. Definir BOOTSTRAP_ADMIN_USER y BOOTSTRAP_ADMIN_PASS (minimo ' . MIN_PASSWORD_LENGTH . ' caracteres).');
+    } elseif ($hasAdmin === 0) {
         $stmt = $pdo->prepare(
                    'INSERT INTO users (username, password_hash, full_name, role, `rank`, active, must_change_password, created_at)
                    

@@ -112,18 +112,6 @@ $flash   = flash_pull();
 
 				<a class="auth-back" href="index.php">&larr; Volver a la pagina publica</a>
 
-				<?php
-				// Ayuda de primer arranque: solo mientras el administrador inicial nunca ingreso.
-				$primerArranque = (int) db()->query(
-					"SELECT COUNT(*) FROM users WHERE role = 'admin' AND must_change_password = 1 AND last_login_at IS NULL"
-				)->fetchColumn() > 0;
-				?>
-				<?php if ($isAdmin && $primerArranque): ?>
-					<div class="credential-box">
-						<b>Primer ingreso:</b> usuario <code><?= e(BOOTSTRAP_ADMIN_USER) ?></code> y contrasena
-						<code><?= e(BOOTSTRAP_ADMIN_PASS) ?></code>. El sistema te pedira cambiarla de inmediato.
-					</div>
-				<?php endif; ?>
 			</div>
 		</main>
 	</div>
