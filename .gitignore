@@ -1,4 +1,4 @@
-# Archivos temporales del sistema y del editor
+# Sistema y editores
 .DS_Store
 Thumbs.db
 *.swp
@@ -6,21 +6,31 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Archivos auxiliares de SQLite generados durante WAL
-*.sqlite-wal
-*.sqlite-shm
-
-# Configuración local no compartible
+# Secretos y configuración local (nunca subir)
 .env
 .env.*
 !.env.example
-
-# Logs locales
-*.log
-vendor/
-writable/session/ci_session*
-.vercel
-writable/debugbar/
-
 app/Config/firebase-credentials.json
 
+# Datos de ejecución: bases, sesiones, logs y cachés
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log
+app/Legacy/data/*.sqlite*
+writable/session/ci_session*
+writable/logs/*
+!writable/logs/index.html
+writable/debugbar/*
+!writable/debugbar/index.html
+writable/cache/*
+!writable/cache/index.html
+writable/uploads/*
+!writable/uploads/index.html
+
+# Dependencias y despliegue
+vendor/
+.vercel
+
+# Copia anidada que se retiró del proyecto
+salidadebomberos2026/
