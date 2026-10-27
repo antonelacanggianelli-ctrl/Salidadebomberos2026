@@ -13,4 +13,5 @@ $routes->match(['get', 'post'], 'admin.php', 'Admin::index', ['filter' => 'role:
 $routes->match(['get', 'post'], 'bomberos.php', 'Bomberos::index', ['filter' => 'role:bombero']);
 $routes->match(['get', 'post'], 'perfil.php', 'Perfil::index', ['filter' => 'role:admin,bombero']);
 $routes->get('api.php', 'LegacyApp::api');
-$routes->match(['get', 'post'], '(:any)', 'LegacyApp::index');
+// Sin ruta comodín: cualquier otra URL responde 404 (antes devolvía la portada con 200).
+$routes->get('index.php', 'LegacyApp::index');
