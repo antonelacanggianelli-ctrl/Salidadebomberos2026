@@ -39,6 +39,16 @@ class RoleFilter implements FilterInterface
             return $this->redirect(panel_url_for($user['role']));
         }
 
+        // Clave provisoria: hasta cambiarla solo se puede usar "Mi perfil".
+        if ((int) ($user['must_change_password'] ?? 0) === 1) {
+            $page = basename((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH));
+            if ($page !== 'perfil.php') {
+                flash('warn', 'Por seguridad, define una contrasena nueva antes de continuar.');
+
+                return $this->redirect('perfil.php');
+            }
+        }
+
         return null;
     }
 

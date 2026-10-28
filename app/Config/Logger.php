@@ -3,6 +3,7 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Log\Handlers\ErrorlogHandler;
 use CodeIgniter\Log\Handlers\FileHandler;
 use CodeIgniter\Log\Handlers\HandlerInterface;
 
@@ -148,4 +149,21 @@ class Logger extends BaseConfig
         //     'messageType' => 0,
         // ],
     ];
+    /**
+     * En Vercel los logs se envían al registro del hosting (stderr) en vez de
+     * un archivo, así se pueden ver desde el panel de Logs.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+
+        if (getenv('VERCEL') !== false) {
+            $this->handlers = [
+                ErrorlogHandler::class => [
+                    'handles'     => ['critical', 'alert', 'emergency', 'debug', 'error', 'info', 'notice', 'warning'],
+                    'messageType' => ErrorlogHandler::TYPE_OS,
+                ],
+            ];
+        }
+    }
 }

@@ -46,6 +46,9 @@ class LegacyApp extends BaseController
 
     public function api(): void
     {
+        // La respuesta es JSON y no debe quedar guardada en cachés compartidas.
+        $this->response->setContentType('application/json', 'utf-8');
+        $this->response->setHeader('Cache-Control', 'no-store');
         $this->run('api.php');
     }
 }

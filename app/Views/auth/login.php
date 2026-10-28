@@ -87,13 +87,6 @@
 				</form>
 
 				<a class="auth-back" href="index.php">&larr; Volver a la pagina publica</a>
-
-				<?php if ($primerArranque): ?>
-					<div class="credential-box">
-						<b>Primer ingreso:</b> usuario <code><?= e(BOOTSTRAP_ADMIN_USER) ?></code> y contrasena
-						<code><?= e(BOOTSTRAP_ADMIN_PASS) ?></code>. El sistema te pedira cambiarla de inmediato.
-					</div>
-				<?php endif; ?>
 			</div>
 		</main>
 	</div>

@@ -295,7 +295,7 @@ function user_create(array $data, string $password, ?int $createdBy, bool $mustC
 function user_update(int $id, array $data): void
 {
     $stmt = db()->prepare(
-        'UPDATE users SET username = ?, full_name = ?, rank = ?, phone = ?, active = ? WHERE id = ?'
+        'UPDATE users SET username = ?, full_name = ?, `rank` = ?, phone = ?, active = ? WHERE id = ?'
     );
     $stmt->execute([$data['username'], $data['full_name'], $data['rank'], $data['phone'], $data['active'], $id]);
 }

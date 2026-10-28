@@ -38,12 +38,14 @@ const LOGIN_LOCK_WINDOW    = 900;   // ventana de bloqueo en segundos (15 minuto
 const MIN_PASSWORD_LENGTH  = 8;
 
 /**
- * Administrador inicial. Se crea solo la primera vez que se abre el sitio.
- * Cambia la contrasena desde "Mi perfil" apenas ingreses.
+ * Administrador inicial. NO hay usuario ni clave en el codigo: se toman de las
+ * variables de entorno BOOTSTRAP_ADMIN_USER / BOOTSTRAP_ADMIN_PASS (y opcionalmente
+ * BOOTSTRAP_ADMIN_NAME) y solo se usan si todavia no existe ningun administrador.
+ * Si no estan definidas, no se crea ningun administrador.
  */
-const BOOTSTRAP_ADMIN_USER = 'admin';
-const BOOTSTRAP_ADMIN_PASS = 'Bomberos2026!';
-const BOOTSTRAP_ADMIN_NAME = 'Administrador del sistema';
+define('BOOTSTRAP_ADMIN_USER', trim((string) (getenv('BOOTSTRAP_ADMIN_USER') ?: '')));
+define('BOOTSTRAP_ADMIN_PASS', (string) (getenv('BOOTSTRAP_ADMIN_PASS') ?: ''));
+define('BOOTSTRAP_ADMIN_NAME', trim((string) (getenv('BOOTSTRAP_ADMIN_NAME') ?: '')) ?: 'Administrador del sistema');
 
 // Catalogos usados por los formularios de alertas.
 const ALERT_TYPES = [

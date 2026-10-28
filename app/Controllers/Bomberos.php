@@ -130,18 +130,23 @@ class Bomberos extends Controller
                 $id = alert_create($data, $this->userId);
                 audit('alerta_creada', '#' . $id . ' ' . $data['title'], $this->user);
 
-                // Notificacion push. Si falla, la alerta igual queda publicada.
-                $detalle = $data['description'] ?? $data['detail'] ?? $data['body'] ?? $data['message'] ?? '';
-                $texto   = mb_substr((string) $detalle, 0, 150);
-                $pushOk  = $this->enviarPush(
-                    (string) $data['title'],
-                    $texto !== '' ? $texto : 'Nueva alerta publicada.'
-                );
+                if ((int) ($data['published'] ?? 0) !== 1) {
+                    // Alerta privada: solo la ve el personal. Nunca se difunde por push.
+                    flash('ok', 'Alerta #' . $id . ' guardada como privada. No es visible en la portada y no se envio notificacion.');
+                } else {
+                    // Notificacion push. Si falla, la alerta igual queda publicada.
+                    $detalle = $data['description'] ?? $data['detail'] ?? $data['body'] ?? $data['message'] ?? '';
+                    $texto   = mb_substr((string) $detalle, 0, 150);
+                    $pushOk  = $this->enviarPush(
+                        (string) $data['title'],
+                        $texto !== '' ? $texto : 'Nueva alerta publicada.'
+                    );
 
-                flash('ok', 'Alerta #' . $id . ' publicada. Ya es visible en la portada.'
-                    . ($pushOk
-                        ? ' Notificacion push enviada.'
-                        : ' (La notificacion push NO se pudo enviar, ver writable/logs.)'));
+                    flash('ok', 'Alerta #' . $id . ' publicada. Ya es visible en la portada.'
+                        . ($pushOk
+                            ? ' Notificacion push enviada.'
+                            : ' (La notificacion push NO se pudo enviar. Revisar los registros del servidor.)'));
+                }
             }
             sdb_redirect('bomberos.php');
         }

@@ -15,6 +15,12 @@ function session_boot(): void
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['SERVER_PORT'] ?? '') === '443');
 
+    // En Vercel las sesiones van a la base (SESSION_DRIVER=database).
+    if (getenv('SESSION_DRIVER') === 'database') {
+        require_once __DIR__ . '/session_db.php';
+        session_set_save_handler(new DbSessionHandler(db(), SESSION_IDLE_TIMEOUT * 2), true);
+    }
+
     session_name(SESSION_NAME);
     session_set_cookie_params([
         'lifetime' => 0,
